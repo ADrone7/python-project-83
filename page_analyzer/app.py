@@ -2,22 +2,21 @@ import os
 from datetime import date
 from urllib.parse import urlparse
 
-from flask import (
-    abort,
-    Flask,
-    flash,
-    url_for,
-    render_template,
-    request,
-    redirect,
-)
-from dotenv import load_dotenv
 import psycopg2
 import psycopg2.extras
-from validators.url import url as is_valid_url
-from bs4 import BeautifulSoup
 import requests
-
+from bs4 import BeautifulSoup
+from dotenv import load_dotenv
+from flask import (
+    Flask,
+    abort,
+    flash,
+    redirect,
+    render_template,
+    request,
+    url_for,
+)
+from validators.url import url as is_valid_url
 
 load_dotenv()
 
@@ -26,7 +25,7 @@ MAX_URL_LEN = 255
 
 
 class DataBase:
-    def __init__(self, db_url: str=DATABASE_URL):
+    def __init__(self, db_url: str = DATABASE_URL):
         self.db_url = db_url
 
     def __enter__(self):
@@ -42,12 +41,11 @@ class DataBase:
             query = "SELECT id FROM urls WHERE name=(%s);"
             with conn.cursor() as curs:
                 curs.execute(query, (url,))
-                url_id = curs.fetchone() # returns None if empty or tuple otherwise
+                url_id = curs.fetchone()
                 if url_id:
                     url_id = url_id[0]
             return url_id
         
-    
     def get_url(self, id: int) -> dict | None:
         with self as conn:
             query = "SELECT * FROM urls WHERE id=(%s);"
@@ -58,7 +56,8 @@ class DataBase:
 
     def add_url(self, url: str) -> int:
         with self as conn:
-            insert_query = "INSERT INTO urls (name, created_at) VALUES (%s, %s) RETURNING id;"
+            insert_query = "INSERT INTO urls (name, created_at) VALUES" \
+                "(%s, %s) RETURNING id;"
             with conn:
                 with conn.cursor() as curs:
                     curs.execute(insert_query, (url, date.today()))
@@ -72,7 +71,8 @@ class DataBase:
                 (select url_id,
                         status_code,
                         created_at,
-                        row_number() over (partition by url_id order by created_at desc) as rn
+                        row_number() over 
+                        (partition by url_id order by created_at desc) as rn
                 from url_checks)
                 SELECT
                     u.id,
@@ -95,14 +95,24 @@ class DataBase:
     def add_check(self, check: dict) -> int:
         with self as conn:
             insert_query = """
-                INSERT INTO url_checks (url_id, status_code, h1, title, description, created_at) VALUES
+                INSERT INTO url_checks (
+                    url_id, 
+                    status_code, 
+                    h1, 
+                    title, 
+                    description, 
+                    created_at
+                ) VALUES
                 (%s, %s, %s, %s, %s, %s) RETURNING id;
             """
             with conn:
                 with conn.cursor() as curs:
-                    curs.execute(insert_query, (check['url_id'], check['status_code'], 
-                                                check['h1'], check['title'], 
-                                                check['description'], date.today()))
+                    curs.execute(insert_query, (check['url_id'], 
+                                                check['status_code'], 
+                                                check['h1'], 
+                                                check['title'], 
+                                                check['description'], 
+                                                date.today()))
                     new_check_id = curs.fetchone()[0]
         return new_check_id
 
@@ -125,6 +135,7 @@ class DataBase:
                 curs.execute(query, (check_id,))
                 check = curs.fetchone()
             return check
+
 
 url_repo = DataBase()
 
@@ -211,7 +222,7 @@ def check_post(id):
         }
         url_repo.add_check(check)
         flash("Страница успешно проверена", "success")
-    except:
+    except Exception:
         flash("Произошла ошибка при проверке", "danger")
     return redirect(url_for("urls_show", id=id), code=302)
 
