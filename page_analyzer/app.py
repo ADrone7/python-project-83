@@ -1,9 +1,6 @@
 import os
-from datetime import date
 from urllib.parse import urlparse
 
-import psycopg2
-import psycopg2.extras
 import requests
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
@@ -18,130 +15,16 @@ from flask import (
 )
 from validators.url import url as is_valid_url
 
+from .database import DataBase
+
 load_dotenv()
 
 DATABASE_URL = os.getenv('DATABASE_URL')
 MAX_URL_LEN = 255
 
-
-class DataBase:
-    def __init__(self, db_url: str = DATABASE_URL):
-        self.db_url = db_url
-
-    def __enter__(self):
-        self.conn = psycopg2.connect(self.db_url, sslmode="disable")
-        return self.conn
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        if self.conn:
-            self.conn.close()
-
-    def get_id(self, url: str) -> int | None:
-        with self as conn:        
-            query = "SELECT id FROM urls WHERE name=(%s);"
-            with conn.cursor() as curs:
-                curs.execute(query, (url,))
-                url_id = curs.fetchone()
-                if url_id:
-                    url_id = url_id[0]
-            return url_id
-        
-    def get_url(self, id: int) -> dict | None:
-        with self as conn:
-            query = "SELECT * FROM urls WHERE id=(%s);"
-            with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as curs:
-                curs.execute(query, (id,))
-                url = curs.fetchone()
-            return url
-
-    def add_url(self, url: str) -> int:
-        with self as conn:
-            insert_query = "INSERT INTO urls (name, created_at) VALUES" \
-                "(%s, %s) RETURNING id;"
-            with conn:
-                with conn.cursor() as curs:
-                    curs.execute(insert_query, (url, date.today()))
-                    new_url_id = curs.fetchone()[0]
-            return new_url_id
-
-    def get_urls(self) -> list:
-        with self as conn:
-            query = """
-                with cte as
-                (select url_id,
-                        status_code,
-                        created_at,
-                        row_number() over 
-                        (partition by url_id order by created_at desc) as rn
-                from url_checks)
-                SELECT
-                    u.id,
-                    u.name,
-                    coalesce(cast(cte.created_at as text),'') as created_at,
-                    coalesce(cast(cte.status_code as text),'') as status_code
-                FROM
-                    urls u
-                left join cte
-                    on u.id = cte.url_id
-                        and cte.rn = 1
-                order by u.id desc;
-            """
-            
-            with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as curs:
-                curs.execute(query)
-                urls = curs.fetchall()
-            return urls
-    
-    def add_check(self, check: dict) -> int:
-        with self as conn:
-            insert_query = """
-                INSERT INTO url_checks (
-                    url_id, 
-                    status_code, 
-                    h1, 
-                    title, 
-                    description, 
-                    created_at
-                ) VALUES
-                (%s, %s, %s, %s, %s, %s) RETURNING id;
-            """
-            with conn:
-                with conn.cursor() as curs:
-                    curs.execute(insert_query, (check['url_id'], 
-                                                check['status_code'], 
-                                                check['h1'], 
-                                                check['title'], 
-                                                check['description'], 
-                                                date.today()))
-                    new_check_id = curs.fetchone()[0]
-        return new_check_id
-
-    def get_checks(self, url_id: int) -> list:
-        with self as conn:
-            query = """
-                SELECT * from url_checks
-                WHERE url_id=(%s)
-                ORDER BY id DESC;
-            """
-            with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as curs:
-                curs.execute(query, (url_id,))
-                checks = curs.fetchall()
-            return checks
-
-    def get_check(self, check_id: int) -> dict | None:
-        with self as conn:
-            query = "SELECT * FROM url_checks WHERE id=(%s);"
-            with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as curs:
-                curs.execute(query, (check_id,))
-                check = curs.fetchone()
-            return check
-
-
-url_repo = DataBase()
-
-
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
+url_repo = DataBase(DATABASE_URL)
 
 
 @app.route('/')
@@ -160,9 +43,9 @@ def urls_index():
 
 @app.route('/urls/<int:id>')
 def urls_show(id):
-    url = url_repo.get_url(id)
+    url = url_repo.get_url_by_id(id)
     if url:
-        checks = url_repo.get_checks(id)
+        checks = url_repo.get_url_checks(id)
         return render_template(
             'urls/show.html',
             url=url,
@@ -189,7 +72,7 @@ def urls_post():
     hostname = parse_result.hostname
     name = scheme + "://" + hostname
 
-    id = url_repo.get_id(name)
+    id = url_repo.get_url_id(name)
     if id:
         flash("Страница уже существует", "info")
         return redirect(url_for("urls_show", id=id), code=302)
@@ -201,7 +84,7 @@ def urls_post():
 
 @app.post('/urls/<int:id>/checks')
 def check_post(id):
-    url = url_repo.get_url(id)
+    url = url_repo.get_url_by_id(id)
     if url is None:
         abort(404)
     site = url['name']
