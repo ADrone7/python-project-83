@@ -28,11 +28,6 @@ MAX_URL_LEN = 255
 class DataBase:
     def __init__(self, db_url: str=DATABASE_URL):
         self.conn = psycopg2.connect(db_url)
-        with open('database.sql', 'r') as file:
-            sql_commands = file.read()
-        with self.conn:
-            with self.conn.cursor() as cursor:
-                cursor.execute(sql_commands)
 
     def __del__(self):
         self.conn.close()
