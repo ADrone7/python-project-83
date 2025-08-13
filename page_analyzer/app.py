@@ -29,7 +29,7 @@ class DataBase:
         self.db_url = db_url
 
     def __enter__(self):
-        self.conn = psycopg2.connect(self.db_url)
+        self.conn = psycopg2.connect(self.db_url, sslmode="disable")
         return self.conn
 
     def __exit__(self, exc_type, exc_val, exc_tb):
