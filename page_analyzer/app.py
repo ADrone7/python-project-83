@@ -15,16 +15,14 @@ from flask import (
 )
 from validators.url import url as is_valid_url
 
-from .database import DataBase
+from . import database as url_repo
+
+MAX_URL_LEN = 255
 
 load_dotenv()
 
-DATABASE_URL = os.getenv('DATABASE_URL')
-MAX_URL_LEN = 255
-
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
-url_repo = DataBase(DATABASE_URL)
 
 
 @app.route('/')
