@@ -61,11 +61,11 @@ def urls_post():
 
     if not is_valid_url(url):
         flash("Некорректный URL", "danger")
-        return render_template("index.html", url=url)
+        return render_template("index.html", url=url), 422
     
     if len(url) > MAX_URL_LEN:
         flash("URL превышает 255 символов", "danger")
-        return render_template("index.html", url=url)
+        return render_template("index.html", url=url), 422
     
     parse_result = urlparse(url)
     scheme = parse_result.scheme
