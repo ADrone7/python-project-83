@@ -1,5 +1,42 @@
 ### Hexlet tests and linter status:
 [![Actions Status](https://github.com/ADrone7/python-project-83/actions/workflows/hexlet-check.yml/badge.svg)](https://github.com/ADrone7/python-project-83/actions)
 
+### [![Maintainability Rating](https://sonarcloud.io/api/project_badges/measure?project=ADrone7_python-project-83&metric=sqale_rating)](https://sonarcloud.io/summary/new_code?id=ADrone7_python-project-83)
+
+### Page Analyzer
+
+**Page Analyzer** is a website that analyzes specified pages for SEO suitability
+
+
+### Requirements
+```
+- Python 3.12+
+- PostgreSQL database 
+- Makefile 
+```
+
+### Installation
+
+#### Clone the repository:
+```
+git clone git@github.com:ADrone7/python-project-83.git
+```
+
+#### Install dependencies and set up the project: 
+```
+make build
+```
+
+### Launching
+
+#### Start the development server: 
+```
+make dev
+```
+#### Start the rroduction server: 
+```
+make start
+```
+
 # Live
 https://python-project-83-usea.onrender.com

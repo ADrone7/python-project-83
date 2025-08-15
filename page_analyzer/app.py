@@ -1,3 +1,4 @@
+import logging
 import os
 from urllib.parse import urlparse
 
@@ -15,14 +16,18 @@ from flask import (
 )
 from validators.url import url as is_valid_url
 
-from . import database as url_repo
-
-MAX_URL_LEN = 255
+from .database import DataBase
 
 load_dotenv()
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
+app.logger.setLevel(logging.WARNING)
+
+DATABASE_URL = os.getenv('DATABASE_URL')
+MAX_URL_LEN = 255
+
+url_repo = DataBase(DATABASE_URL, app.logger)
 
 
 @app.route('/')
@@ -68,14 +73,14 @@ def urls_post():
     parse_result = urlparse(url)
     scheme = parse_result.scheme
     hostname = parse_result.hostname
-    name = scheme + "://" + hostname
+    url = f"{scheme}://{hostname}"
 
-    id = url_repo.get_url_id(name)
+    id = url_repo.get_url_id(url)
     if id:
         flash("Страница уже существует", "info")
         return redirect(url_for("urls_show", id=id), code=302)
     
-    new_id = url_repo.add_url(name)
+    new_id = url_repo.add_url(url)
     flash("Страница успешно добавлена", "success")
     return redirect(url_for("urls_show", id=new_id), code=302)
 
