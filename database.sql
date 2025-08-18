@@ -4,7 +4,7 @@ DROP TABLE IF EXISTS urls;
 CREATE TABLE urls (
     id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     name VARCHAR(255) NOT NULL UNIQUE,
-    created_at DATE
+    created_at DATE DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE url_checks (
@@ -14,5 +14,5 @@ CREATE TABLE url_checks (
     h1 VARCHAR(255),
     title VARCHAR(255),
     description TEXT,
-    created_at DATE
+    created_at DATE DEFAULT CURRENT_TIMESTAMP
 );

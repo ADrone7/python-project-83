@@ -1,5 +1,3 @@
-from datetime import date
-
 import psycopg2
 import psycopg2.extras
 
@@ -7,6 +5,7 @@ import psycopg2.extras
 def connection(cursor_factory=None):
     def decorator(function):
         def wrapper(self, *args, **kwargs):
+            conn = None
             try:
                 conn = psycopg2.connect(getattr(self, 'db_url'))
                 with conn:
@@ -46,9 +45,9 @@ class DataBase:
 
     @connection()
     def add_url(self, curs, url: str) -> int:
-        insert_query = "INSERT INTO urls (name, created_at) VALUES" \
-            "(%s, %s) RETURNING id;"
-        curs.execute(insert_query, (url, date.today()))
+        insert_query = "INSERT INTO urls (name) VALUES" \
+            "(%s) RETURNING id;"
+        curs.execute(insert_query, (url,))
         new_url_id = curs.fetchone()[0]
         return new_url_id
 
@@ -87,17 +86,15 @@ class DataBase:
                 status_code, 
                 h1, 
                 title, 
-                description, 
-                created_at
+                description
             ) VALUES
-            (%s, %s, %s, %s, %s, %s) RETURNING id;
+            (%s, %s, %s, %s, %s) RETURNING id;
         """
         curs.execute(insert_query, (check['url_id'], 
                                     check['status_code'], 
                                     check['h1'], 
                                     check['title'], 
-                                    check['description'], 
-                                    date.today()))
+                                    check['description'],))
         new_check_id = curs.fetchone()[0]
         return new_check_id
 

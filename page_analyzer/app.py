@@ -1,9 +1,7 @@
 import logging
 import os
-from urllib.parse import urlparse
 
 import requests
-from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 from flask import (
     Flask,
@@ -14,9 +12,10 @@ from flask import (
     request,
     url_for,
 )
-from validators.url import url as is_valid_url
 
 from .database import DataBase
+from .parser import get_data
+from .process_url import normalize_url, validate_url
 
 load_dotenv()
 
@@ -62,27 +61,20 @@ def urls_post():
     request_data = request.form.to_dict()
     url = request_data['url']
 
-    if not is_valid_url(url):
-        flash("Некорректный URL", "danger")
+    errors = validate_url(url)
+    if errors:
+        flash(errors['url'], "danger")
         return render_template("index.html", url=url), 422
     
-    if len(url) > MAX_URL_LEN:
-        flash("URL превышает 255 символов", "danger")
-        return render_template("index.html", url=url), 422
-    
-    parse_result = urlparse(url)
-    scheme = parse_result.scheme
-    hostname = parse_result.hostname
-    url = f"{scheme}://{hostname}"
+    url = normalize_url(url)
 
     id = url_repo.get_url_id(url)
     if id:
         flash("Страница уже существует", "info")
-        return redirect(url_for("urls_show", id=id), code=302)
-    
-    new_id = url_repo.add_url(url)
-    flash("Страница успешно добавлена", "success")
-    return redirect(url_for("urls_show", id=new_id), code=302)
+    else:
+        id = url_repo.add_url(url)
+        flash("Страница успешно добавлена", "success")
+    return redirect(url_for("urls_show", id=id), code=302)
 
 
 @app.post('/urls/<int:id>/checks')
@@ -95,17 +87,9 @@ def check_post(id):
     try:
         response = requests.get(site)
         response.raise_for_status()
-        soup = BeautifulSoup(response.content, 'html.parser')
 
-        desc = soup.find('meta', {'name': 'description'})
-
-        check = {
-            'url_id': id,
-            'status_code': response.status_code,
-            'h1': soup.h1.text if soup.h1 else '',
-            'title': soup.title.text if soup.title else '',
-            'description': desc.get('content') if desc else '',
-        }
+        check = get_data(response)
+        check['url_id'] = id
         url_repo.add_check(check)
         flash("Страница успешно проверена", "success")
     except Exception:
