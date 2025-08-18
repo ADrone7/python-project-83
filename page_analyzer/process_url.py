@@ -12,7 +12,7 @@ def validate_url(url):
     errors = {}
 
     if not is_valid_url(url):
-        errors['url'] = 'Некорректный формат URL'
+        errors['url'] = 'Некорректный URL'
     if url == "":
         errors['url'] = 'URL не может быть пустым'
     if len(url) > 255:
